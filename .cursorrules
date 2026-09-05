@@ -1,0 +1,57 @@
+# Project: Heal-Companion (治愈陪伴 AI)
+
+## 1. System Architecture
+- 本项目为 1v1 治愈系长效陪伴 AI，前端采用 React/Next.js/Vue，后端为 Node.js/Python。
+- 目录结构规范：
+  - src/assets/ (图片、Lottie 动画、静音音效)
+  - src/components/ (GlassCard, ChatBubble, Mascot, InputBar, AmbientPlayer)
+  - src/pages/ (ChatMainPage, MemoryViewer)
+  - src/services/ (llmPipeline, memoryStore, heartbeat, autoTagger)
+  - companion/persona/ (YAML 人设；AI 灵魂放这里，不是 PROMPT.md)
+
+## 2. UI/UX Rules (严格禁止毛坯房 UI)
+- 全局主配色：低饱和梦幻淡紫（#F2ECFC → #EAE0FF）与柔雾紫（#8B6DC8）。
+- 控件风格：半透明 Glassmorphism (`backdrop-filter: blur(20px)`, `bg-white/68`)。
+- 形状与阴影：大圆角 (`border-radius: 28px~32px`)，柔和阴影 (`box-shadow: 0 16px 48px rgba(120,90,200,0.10)`)。
+- 气泡区分：AI 气泡在左（柔白 Glass 卡片 `rgba(255,255,255,0.82)`），用户气泡在右（去饱和紫渐变 `#9D80D4→#7A62B0`）。
+
+## 2.1 Heal Project - UI/UX Design System Rules (Otome / Anime Expert)
+
+You are a top-tier Otome Game / Anime UI/UX Frontend Expert.
+When writing or refactoring any frontend components for this project, you MUST strictly adhere to these rules:
+
+1. NEVER write generic white-background web cards (e.g., no plain `bg-white shadow`).
+2. Always use Low-Saturation Dreamy Glassmorphism:
+   - Primary Glass: `backdrop-blur-xl bg-white/20 border border-white/30`
+   - Dark Floating Modal: `bg-[#1e1441]/80 backdrop-blur-xl border border-white/20 text-white`
+3. Layer Stacking & Positioning:
+   - Use multi-layer z-index stacking (`position: fixed/absolute inset-0`).
+   - Interactive elements must NEVER block core navigation or message input safe zones.
+4. Character Avatar/Spine/Lottie Setup:
+   - Always use `object-position: center 15%` to lock the golden ratio for character head/shoulders and prevent awkward clipping.
+   - Use `animate-breathe` for subtle breathing idle animations.
+
+## 3. Immersion Rules (沉浸感铁律 — 绝对禁止)
+- ❌ 禁止出现：每日任务、签到打卡、等级进度条、亲密度数值
+- ❌ 禁止出现：AI 免责声明水印/弹窗、广告 Banner、系统通知样式消息
+- ✅ 界面只保留：角色、对话气泡、微动画，其余一律留白
+- ✅ 保留 2D 灵动感：使用 Lottie 动画或 Live2D 实现角色呼吸/眨眼微动
+- ✅ AI 回复可穿插动作描写：`*轻轻拍了拍你的肩膀*`、`*蹭了蹭你*`
+
+## 4. LLM Logic & Persona Rules
+- 系统必须内置"三层记忆"注入机制（Profile + Vector Episodic + Current Context）。
+- AI Persona：0 审视、0 批判、无爹味说教、无虚假承诺、极具同理心与现实微动作引导。
+- 心理疗愈底座：对话逻辑基于人本主义心理学（无条件积极关注），为用户提供低耗能情绪出口。
+- 动态偏好自训练（Auto-Tagging）：每轮对话后异步提取 preference_tags（如"喜欢简短回复"、"最近焦虑"），累积权重后注入下一轮 System Prompt，实现越聊越懂你。
+
+## 5. Feature Rules (功能约束)
+- P0 必须实现：全局治愈白噪音/α/θ 脑波音乐组件（AmbientPlayer），默认 3-4 种音效。
+- P0 必须实现：语音消息 Auto-play — 用户发语音后 AI 语音回复自动播放，无需点击。
+- P1 实现：Real-world Bridge — 根据 preference_tags 主动推送真实早报/链接，增强活人感。
+
+## 6. MVP Discipline (Phase 1 Only)
+- **只做 Phase 1**：视听沉浸 + 活人感 + 0 审视记忆，其余全部冻结到 Phase 2。
+- P0 必须落地：Glassmorphism UI、Lottie 微动、Auto-play Voice、AmbientPlayer、三层记忆、对话 Pipeline。
+- P1 紧跟：Heartbeat 唤醒、认识第 X 天计数、Real-world Bridge。
+- 严禁在 Phase 1 引入：防沉迷逻辑、登录系统、社区功能、硬件接口。
+- 所有新组件必须符合 §2 UI/UX 和 §3 沉浸感铁律，不得输出毛坯房代码。

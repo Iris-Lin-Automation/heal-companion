@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="orb" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E8DFF8"/>
+      <stop offset="0.45" stop-color="#B9A3E0"/>
+      <stop offset="1" stop-color="#8B6DC8"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="18" y1="22" x2="46" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#F2ECFC" stop-opacity="0.18"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="32" cy="28" r="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2ECFC" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8B6DC8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- soft outer haze -->
+  <circle cx="32" cy="32" r="30" fill="url(#glow)"/>
+
+  <!-- dreamy orb -->
+  <circle cx="32" cy="32" r="24" fill="url(#orb)"/>
+  <circle cx="32" cy="32" r="23.2" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"/>
+
+  <!-- glass highlight -->
+  <ellipse cx="24" cy="22" rx="10" ry="6" fill="url(#mist)" transform="rotate(-18 24 22)"/>
+
+  <!-- gentle crescent -->
+  <path
+    d="M40 21c-7.2 1.1-12.6 7.3-12.6 14.8 0 8.3 6.7 15 15 15 1.4 0 2.8-.2 4.1-.6-2.9 2-6.4 3.1-10.2 3.1C27 53.3 19 45.3 19 35.5S27 17.7 36.3 17.7c3.2 0 6.2.9 8.7 2.4-1.5-.6-3.2-1-4.9-1.1z"
+    fill="rgba(255,255,255,0.38)"
+  />
+  <circle cx="42" cy="25" r="1.5" fill="rgba(255,255,255,0.78)"/>
+</svg>

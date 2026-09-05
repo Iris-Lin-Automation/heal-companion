@@ -1,0 +1,50 @@
+:root {
+  font-family: "Noto Sans SC", system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: rgba(232, 226, 255, 0.92);
+  background: #160C38; /* 深紫，不是近黑 */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  /* 禁止页面级滚动，所有滚动在内层容器处理 */
+  overflow: hidden;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ════════════════════════════════════════════════════
+   立绘呼吸微动 — 乙女游戏卡面感
+   ════════════════════════════════════════════════════ */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.03) translateY(-6px); /* 微微放大并上浮 */
+  }
+}
+
+.animate-breathe {
+  animation: breathe 7s ease-in-out infinite;
+  transform-origin: center top; /* 锚点在头部，放大时不会位移出框 */
+}

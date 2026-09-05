@@ -1,0 +1,11 @@
+# 给开发者看：改哪块打开哪个文件
+maintenance_notes:
+  - "调原型/反差 → persona_card.yaml"
+  - "调外貌 → appearance.yaml"
+  - "调关系阶段/称呼/边界 → relationship.yaml"
+  - "调升温降温与情绪原则 → emotion.yaml"
+  - "调口吻口头禅禁止项 → speech.yaml"
+  - "加场景反应 → scenarios.yaml"
+  - "加对话范例 → examples.yaml"
+  - "换立绘路径 → visual.yaml"
+  - "日常 Bad Case 短规则仍写 companion/persona/tuning_notes.md"

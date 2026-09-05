@@ -1,0 +1,11 @@
+# 表情立绘路径（与前端 LiveCharacterView 对齐；改图只改路径）
+visual_assets:
+  neutral: "/images/heal-character-idle.png"
+  blink: "/images/heal-character-blink.png"
+  speak: "/images/heal-character-speak.png"
+  smile: "/images/heal-character-smile.png"
+  shy: "/images/heal-character-shy.png"
+  angry_mild: "/images/heal-character-angry.png"
+  angry_fierce: "/images/heal-character-angry-fierce.png"
+  aggrieved: "/images/heal-character-aggrieved.png"
+  hurt_tears: "/images/heal-character-hurt-tears.png"

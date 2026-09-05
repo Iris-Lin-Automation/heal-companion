@@ -1,0 +1,12 @@
+# 人设已拆到目录，请不要再往这个大文件里堆内容。
+#
+# 编辑入口：
+#   companion/persona/older_friend/_index.yaml   ← 模块清单
+#   companion/persona/older_friend/*.yaml       ← 各旋钮
+#
+# PersonaManager 会优先加载 older_friend/ 目录。
+# 本文件仅作兼容提示；删除也不影响运行。
+
+id: older_friend
+name: heal
+_deprecated: "内容已迁移到 companion/persona/older_friend/"

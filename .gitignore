@@ -1,0 +1,33 @@
+﻿# ===== 密钥 / 环境 =====
+.env
+.env.local
+.env.*.local
+*.secret
+
+# ===== 数据与缓存 =====
+data/
+.uv-cache/
+__pycache__/
+*.pyc
+
+# ===== Python 虚拟环境 =====
+.venv/
+venv/
+env/
+ENV/
+.venv_build/
+
+# ===== Node 前端构建产物 =====
+node_modules/
+web/node_modules/
+web/dist/
+.next/
+dist/
+
+# ===== IDE / OS =====
+.vscode/
+.vs/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+# heal 人设总索引 — 只改「拆哪几块 / 叫什么」
+# 具体内容在同目录各模块文件；按 modules 顺序合并进 System Prompt。
+id: older_friend
+name: heal
+modules:
+  - persona_card      # 角色圣经：原型、反差、不是谁
+  - appearance        # 外貌与镜头感
+  - relationship      # 关系阶段、称呼、边界、修复
+  - emotion           # 升温降温 + 情绪响应原则
+  - speech            # 说话纹理、对话风格、禁止项
+  - scenarios         # 场景反应
+  - identity          # 你是谁、信念、性格列表
+  - real_world        # 现实连接
+  - examples          # few-shot 对话
+  - visual            # 表情立绘路径（给人看 / 以后接前端）
+  - maintenance       # 维护说明（给开发者）
