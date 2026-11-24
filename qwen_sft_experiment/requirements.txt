@@ -1,0 +1,33 @@
+# Qwen中文小说能力SFT实验依赖项
+# 基础依赖
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.10.0
+evaluate>=0.4.0
+numpy<1.27.0,>=1.24.0
+pandas>=2.0.0
+scipy<1.12.0,>=1.10.0
+
+# LoRA依赖
+peft>=0.4.0
+bitsandbytes>=0.39.0
+
+# 中文NLP依赖
+jieba>=0.42.1
+snownlp>=0.12.3
+
+# 其他依赖
+tqdm>=4.65.0
+tensorboard>=2.13.0
+wandb>=0.15.0
+python-dotenv>=1.0.0
+
+# 开发依赖
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.12.0
+
+# 可选依赖
+# accelerate>=0.20.0
+# deepspeed>=0.9.0
+# trl>=0.5.0
