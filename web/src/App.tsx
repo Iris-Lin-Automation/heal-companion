@@ -414,6 +414,7 @@ export default function App() {
       ]);
     }
 
+    let replyFinished = false;
     try {
       // 用缓存环境立刻开聊，避免每次等定位/天气
       const env = envRef.current ?? (await collectEnvContext());
@@ -436,7 +437,6 @@ export default function App() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let replyFinished = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -446,9 +446,19 @@ export default function App() {
         for (const part of parts) {
           const line = part.trim();
           if (!line.startsWith("data:")) continue;
-          const payload = JSON.parse(line.slice(5).trim());
-          if (payload.error) throw new Error("fail");
-          if (payload.token) {
+          let payload: Record<string, unknown>;
+          try {
+            payload = JSON.parse(line.slice(5).trim()) as Record<string, unknown>;
+          } catch {
+            // 半包 / 代理掐断时可能出现残缺 JSON，忽略即可
+            continue;
+          }
+          // 正文已完成后的 chips/尾包错误，不当整轮失败
+          if (payload.error) {
+            if (replyFinished || streamBotRef.current.trim()) break;
+            throw new Error("fail");
+          }
+          if (typeof payload.token === "string") {
             streamBotRef.current += payload.token;
             setMessages((prev) => {
               const idx = [...prev].reverse().findIndex((m) => m.role === "assistant");
@@ -462,10 +472,10 @@ export default function App() {
             });
             pumpSpeech(false);
           }
-          if (payload.quick_replies && Array.isArray(payload.quick_replies)) {
+          if (Array.isArray(payload.quick_replies)) {
             setQuickReplies(payload.quick_replies as string[]);
           }
-          if (payload.emotion && typeof payload.emotion === "string") {
+          if (typeof payload.emotion === "string" && payload.emotion) {
             replyEmotion = payload.emotion;
             const fromTag = emotionToCharacter(streamBotRef.current);
             setCharacterEmotion(
@@ -486,26 +496,45 @@ export default function App() {
       lastFailedTextRef.current = null;
       setShowRetry(false);
       if (!replyFinished) {
-        pumpSpeech(true);
+        // 流提前结束但已有正文：当成功，别弹「连不上」
+        if (streamBotRef.current.trim()) {
+          replyFinished = true;
+          pumpSpeech(true);
+        }
         setBusy(false);
       }
       void refreshMemories();
     } catch {
-      lastFailedTextRef.current = trimmed;
-      setShowRetry(true);
-      setMessages((prev) => {
-        const idx = [...prev].reverse().findIndex((m) => m.role === "assistant");
-        if (idx < 0) return prev;
-        const realIdx = prev.length - 1 - idx;
-        return prev.map((m, i) =>
-          i === realIdx
-            ? {
-                ...m,
-                content: "刚才断了一下。点下面的圆圈，我重新听你说。",
-              }
-            : m
-        );
-      });
+      const kept = stripEmotionTag(streamBotRef.current).trim();
+      if (replyFinished || kept) {
+        // 说完后网络/快捷回复抖动：保留原话，不盖成断线文案
+        lastFailedTextRef.current = null;
+        setShowRetry(false);
+        setMessages((prev) => {
+          const idx = [...prev].reverse().findIndex((m) => m.role === "assistant");
+          if (idx < 0) return prev;
+          const realIdx = prev.length - 1 - idx;
+          return prev.map((m, i) =>
+            i === realIdx ? { ...m, content: kept || m.content } : m
+          );
+        });
+      } else {
+        lastFailedTextRef.current = trimmed;
+        setShowRetry(true);
+        setMessages((prev) => {
+          const idx = [...prev].reverse().findIndex((m) => m.role === "assistant");
+          if (idx < 0) return prev;
+          const realIdx = prev.length - 1 - idx;
+          return prev.map((m, i) =>
+            i === realIdx
+              ? {
+                  ...m,
+                  content: "刚才断了一下。点下面的圆圈，我重新听你说。",
+                }
+              : m
+          );
+        });
+      }
     } finally {
       setBusy(false);
     }

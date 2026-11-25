@@ -352,11 +352,21 @@ def chat(body: ChatRequest):
             emotion = resolve_reply_emotion(reply_text, text)
             yield f"data: {json.dumps({'done': True, 'companion': name, 'emotion': emotion}, ensure_ascii=False)}\n\n"
 
-            chips = _gen_quick_replies(client, model, text, reply_text)
-            if chips:
-                yield f"data: {json.dumps({'quick_replies': chips}, ensure_ascii=False)}\n\n"
+            # chips 失败绝不能再抛 error：否则前端会把已成功的回复盖成「连不上」
+            try:
+                yield ": keepalive\n\n"
+                chips = _gen_quick_replies(client, model, text, reply_text)
+                if chips:
+                    yield f"data: {json.dumps({'quick_replies': chips}, ensure_ascii=False)}\n\n"
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as exc:  # noqa: BLE001
-            yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            # 若已开始吐字，尽量别用 error 冲掉前端已渲染内容（前端也会兜底）
+            if full_reply:
+                emotion = resolve_reply_emotion("".join(full_reply), text)
+                yield f"data: {json.dumps({'done': True, 'companion': name, 'emotion': emotion}, ensure_ascii=False)}\n\n"
+            else:
+                yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
 
