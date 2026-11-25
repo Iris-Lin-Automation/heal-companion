@@ -11,6 +11,8 @@ import ChatRoom from "./pages/ChatRoom";
 import type { ChatMessage, MemoryItem } from "./pages/ChatRoom";
 import type { CharacterEmotion } from "./components/LiveCharacterView";
 import AmbientPlayer from "./components/AmbientPlayer";
+import ApiKeySheet from "./components/ApiKeySheet";
+import { getUserApiKey, getUserBaseUrl, hasUserApiKey } from "./lib/apiKey";
 import "./styles/app.css";
 
 type Screen = "welcome" | "greet" | "firstmeet" | "home" | "chat" | "notebook";
@@ -40,7 +42,9 @@ export default function App() {
     }
   });
   const [showMusicPanel, setShowMusicPanel] = useState(false);
-  const [voiceType, setVoiceType] = useState(() => {
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeyReady, setApiKeyReady] = useState(() => hasUserApiKey());
+  const [voiceType] = useState(() => {
     try {
       return localStorage.getItem("heal-voice-type") || DEFAULT_VOICE_TYPE;
     } catch {
@@ -359,6 +363,11 @@ export default function App() {
   async function sendMessage(text: string, opts?: { isRetry?: boolean }) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    if (!hasUserApiKey()) {
+      // 访客免费玩：先填自己的 DeepSeek Key
+      setShowApiKey(true);
+      return;
+    }
     if (ttsEnabledRef.current) unlockAudioPlayback();
     setBusy(true);
     setQuickReplies([]);
@@ -431,8 +440,14 @@ export default function App() {
           user_id: session.userId,
           stream: true,
           env_context: env,
+          api_key: getUserApiKey() || undefined,
+          base_url: getUserBaseUrl() || undefined,
         }),
       });
+      if (res.status === 401) {
+        setShowApiKey(true);
+        throw new Error("need_key");
+      }
       if (!res.ok || !res.body) throw new Error("fail");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -504,7 +519,16 @@ export default function App() {
         setBusy(false);
       }
       void refreshMemories();
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message === "need_key") {
+        setShowRetry(false);
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && !last.content) return prev.slice(0, -1);
+          return prev;
+        });
+        return;
+      }
       const kept = stripEmotionTag(streamBotRef.current).trim();
       if (replyFinished || kept) {
         // 说完后网络/快捷回复抖动：保留原话，不盖成断线文案
@@ -544,11 +568,6 @@ export default function App() {
     const text = lastFailedTextRef.current;
     if (!text || busy) return;
     void sendMessage(text, { isRetry: true });
-  }
-
-  async function playTtsSample(sample: { text: string }) {
-    unlockAudioPlayback();
-    await speakEdgeTts(sample.text);
   }
 
   async function fetchTtsBlob(
@@ -724,8 +743,17 @@ export default function App() {
       const res = await fetch("/api/ping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: session.userId, env_context: env }),
+        body: JSON.stringify({
+          user_id: session.userId,
+          env_context: env,
+          api_key: getUserApiKey() || undefined,
+          base_url: getUserBaseUrl() || undefined,
+        }),
       });
+      if (res.status === 401) {
+        setShowApiKey(true);
+        throw new Error("need_key");
+      }
       if (!res.ok) throw new Error("fail");
       const data = await res.json();
       const text = stripEmotionTag(String(data.message || ""));
@@ -787,14 +815,16 @@ export default function App() {
     setScreen("chat");
   }
 
+  const entryMode = screen === "welcome" || screen === "greet" || screen === "home" || screen === "firstmeet";
+
   return (
     <div className="app-shell">
-    <div className="world">
+    <div className={`world ${entryMode ? "world--entry" : "world--chat"}`}>
       {/* 全局立绘背景 — ChatRoom 会用自己的 absolute 层覆盖 */}
       <div className="world-bg" aria-hidden>
         <img src="/images/heal-character-main.jpg" alt="" draggable={false} />
 
-        {/* 角色身后梦幻紫光晕 */}
+        {/* 角色身后梦幻紫光晕（仅入口页氛围灯，聊天页有自己的立绘） */}
         <div className="world-char-glow" />
         <div className="world-bg-overlay" />
       </div>
@@ -803,7 +833,13 @@ export default function App() {
 
       {screen === "welcome" && (
         <Welcome
-          onEnter={() => setScreen(session.onboarded ? "home" : "greet")}
+          onEnter={() => {
+            if (!hasUserApiKey()) {
+              setShowApiKey(true);
+              return;
+            }
+            setScreen(session.onboarded ? "home" : "greet");
+          }}
           onReset={() => {
             const fresh = resetSession();
             setSession(fresh);
@@ -815,6 +851,8 @@ export default function App() {
             setScreen("greet");
           }}
           isReturning={session.onboarded}
+          hasApiKey={apiKeyReady}
+          onOpenApiKey={() => setShowApiKey(true)}
         />
       )}
 
@@ -864,21 +902,18 @@ export default function App() {
           showNotebook={showNotebook}
           quickReplies={quickReplies}
           ttsEnabled={ttsEnabled}
-          voiceType={voiceType}
           characterEmotion={characterEmotion}
           characterSpeaking={characterSpeaking}
           showRetry={showRetry}
           onRetry={handleRetry}
-          onVoiceTypeChange={setVoiceType}
           onToggleMusic={() => setShowMusicPanel((v) => !v)}
           onToggleTTS={handleToggleTTS}
           onToggleNotebook={() => {
             setShowNotebook((v) => !v);
             void refreshMemories();
           }}
+          onOpenApiKey={() => setShowApiKey(true)}
           onSend={(t) => void sendMessage(t)}
-          onPlayTtsSample={(s) => void playTtsSample(s)}
-          onPreviewEmotion={setCharacterEmotion}
           onMissYou={() => void onMissYou(false)}
           onBack={() => {
             setShowNotebook(false);
@@ -891,6 +926,16 @@ export default function App() {
       <AmbientPlayer
         panelOpen={showMusicPanel}
         onClose={() => setShowMusicPanel(false)}
+      />
+      <ApiKeySheet
+        open={showApiKey}
+        onClose={() => setShowApiKey(false)}
+        onSaved={() => {
+          setApiKeyReady(hasUserApiKey());
+          if (screen === "welcome" && hasUserApiKey()) {
+            setScreen(session.onboarded ? "home" : "greet");
+          }
+        }}
       />
     </div>
     </div>

@@ -36,12 +36,23 @@ app.add_middleware(
 )
 
 
-def _settings() -> tuple[OpenAI, str, str]:
-    api_key = os.getenv("OPENAI_API_KEY")
+def _settings(
+    api_key_override: Optional[str] = None,
+    base_url_override: Optional[str] = None,
+) -> tuple[OpenAI, str, str]:
+    """优先用访客自带的 DeepSeek Key（BYOK），否则回退到服务器 .env。"""
+    api_key = (api_key_override or "").strip() or (os.getenv("OPENAI_API_KEY") or "")
     if not api_key or api_key.startswith("sk-xxx"):
-        raise HTTPException(status_code=500, detail="请在 .env 配置 OPENAI_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL") or None
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        raise HTTPException(
+            status_code=401,
+            detail="请填写自己的 DeepSeek API Key（设置里粘贴后即可免费体验）",
+        )
+    base_url = (
+        (base_url_override or "").strip()
+        or os.getenv("OPENAI_BASE_URL")
+        or "https://api.deepseek.com"
+    )
+    model = os.getenv("OPENAI_MODEL", "deepseek-chat")
     name = os.getenv("COMPANION_NAME", "软软")
     return OpenAI(api_key=api_key, base_url=base_url), model, name
 
@@ -56,11 +67,16 @@ class ChatRequest(BaseModel):
     stream: bool = True
     # 前端悄悄上传：城市 / 本地时间 / 天气（Open-Meteo 等免费源）
     env_context: Optional[dict[str, Any]] = None
+    # 访客自带 DeepSeek Key（只走本次请求，不落盘）
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
 
 
 class PingRequest(BaseModel):
     user_id: str = "default"
     env_context: Optional[dict[str, Any]] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
 
 
 class TTSRequest(BaseModel):
@@ -301,7 +317,7 @@ def update_profile(body: ProfileUpdate):
 
 @app.post("/api/ping")
 def ping(body: PingRequest):
-    client, model, name = _settings()
+    client, model, name = _settings(body.api_key, body.base_url)
     store = MemoryStore(body.user_id)
     msg = craft_checkin(
         client, model, store, name, env_context=body.env_context
@@ -314,7 +330,7 @@ def ping(body: PingRequest):
 
 @app.post("/api/chat")
 def chat(body: ChatRequest):
-    client, model, name = _settings()
+    client, model, name = _settings(body.api_key, body.base_url)
     store = MemoryStore(body.user_id)
     text = body.message.strip()
     if not text:

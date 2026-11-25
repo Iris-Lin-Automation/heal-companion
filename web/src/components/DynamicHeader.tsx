@@ -18,6 +18,7 @@ type Props = {
   onToggleTTS?: () => void;
   onToggleMusic?: () => void;
   onOpenDays?: () => void;
+  onOpenApiKey?: () => void;
 };
 
 export default function DynamicHeader({
@@ -33,6 +34,7 @@ export default function DynamicHeader({
   onToggleTTS,
   onToggleMusic,
   onOpenDays,
+  onOpenApiKey,
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
@@ -153,6 +155,19 @@ export default function DynamicHeader({
             >
               {notebookOpen ? "收起" : "记忆"}
             </button>
+            {onOpenApiKey && (
+              <button
+                type="button"
+                className="char-action-btn"
+                onClick={() => {
+                  onOpenApiKey();
+                  setOpen(false);
+                }}
+                title="DeepSeek API Key"
+              >
+                Key
+              </button>
+            )}
             <button
               type="button"
               className="char-action-btn char-action-btn--icon"

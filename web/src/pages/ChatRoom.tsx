@@ -4,7 +4,6 @@ import DynamicHeader from "../components/DynamicHeader";
 import GlassChatStream, { type ChatMessage } from "../components/GlassChatStream";
 import VoiceInputBar from "../components/VoiceInputBar";
 import MemoryNotebook, { type MemoryItem } from "../components/MemoryNotebook";
-import DevLabPanel, { type ScriptScene, type TtsSample } from "../components/DevLabPanel";
 
 /** Re-export so App.tsx 的 import 路径无需改动 */
 export type { ChatMessage, MemoryItem };
@@ -20,18 +19,15 @@ type Props = {
   showNotebook: boolean;
   quickReplies?: string[];
   ttsEnabled?: boolean;
-  voiceType: string;
   characterEmotion: CharacterEmotion;
   characterSpeaking: boolean;
   showRetry?: boolean;
   onRetry?: () => void;
-  onVoiceTypeChange: (voiceType: string) => void;
   onToggleNotebook: () => void;
   onToggleTTS?: () => void;
   onToggleMusic?: () => void;
+  onOpenApiKey?: () => void;
   onSend: (text: string) => void;
-  onPlayTtsSample: (sample: TtsSample) => void;
-  onPreviewEmotion: (emotion: CharacterEmotion) => void;
   onMissYou: () => void;
   onBack: () => void;
 };
@@ -45,18 +41,15 @@ export default function ChatRoom({
   showNotebook,
   quickReplies,
   ttsEnabled,
-  voiceType,
   characterEmotion,
   characterSpeaking,
   showRetry,
   onRetry,
-  onVoiceTypeChange,
   onToggleNotebook,
   onToggleTTS,
   onToggleMusic,
+  onOpenApiKey,
   onSend,
-  onPlayTtsSample,
-  onPreviewEmotion,
   onMissYou,
   onBack,
 }: Props) {
@@ -68,10 +61,6 @@ export default function ChatRoom({
     if (!text || busy) return;
     setInput("");
     onSend(text);
-  }
-
-  function handleScript(scene: ScriptScene) {
-    onSend(scene.userLine);
   }
 
   return (
@@ -96,6 +85,7 @@ export default function ChatRoom({
         onToggleTTS={onToggleTTS}
         onToggleMusic={onToggleMusic}
         onOpenDays={() => setDaysOpen(true)}
+        onOpenApiKey={onOpenApiKey}
       />
 
       <div className="char-overlay">
@@ -103,7 +93,9 @@ export default function ChatRoom({
           messages={messages}
           busy={busy}
           quickReplies={quickReplies}
-          onChipClick={(text) => { onSend(text); }}
+          onChipClick={(text) => {
+            onSend(text);
+          }}
           showRetry={showRetry}
           onRetry={onRetry}
           retrying={busy}
@@ -141,17 +133,6 @@ export default function ChatRoom({
           </div>
         </div>
       )}
-
-      {/* 左侧隐藏调音板 / 剧本台 */}
-      <DevLabPanel
-        busy={busy}
-        voiceType={voiceType}
-        activeEmotion={characterEmotion}
-        onVoiceTypeChange={onVoiceTypeChange}
-        onPlaySample={onPlayTtsSample}
-        onRunScript={handleScript}
-        onPreviewEmotion={onPreviewEmotion}
-      />
     </div>
   );
 }
