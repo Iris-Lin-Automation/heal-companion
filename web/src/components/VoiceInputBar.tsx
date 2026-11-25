@@ -1,21 +1,36 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  /** 父层调用：清空 input 值、调用 API */
   onSend: () => void;
   busy?: boolean;
   placeholder?: string;
 };
 
+type SpeechRec = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+};
+
+function getSpeechRecognition(): (new () => SpeechRec) | null {
+  const w = window as Window & {
+    SpeechRecognition?: new () => SpeechRec;
+    webkitSpeechRecognition?: new () => SpeechRec;
+  };
+  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+}
+
 /**
- * Layer 1 — 底部输入栏
- *
- * 从左到右：[🎤 语音按钮（占位）] [textarea 自适应高度] [发送按钮]
- *
- * 语音按钮当前为 disabled 占位，待接入 Web Speech API 后启用：
- *   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+ * 底部纤细输入条：麦克风 + 单行输入 + 箭头发送
+ * 默认收成一条浮线，点一下再展开，少挡立绘脸。
  */
 export default function VoiceInputBar({
   value,
@@ -25,16 +40,35 @@ export default function VoiceInputBar({
   placeholder = "说点什么…",
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recRef = useRef<SpeechRec | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [micSupported, setMicSupported] = useState(true);
 
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    onChange(e.target.value);
-    // textarea 随内容自动伸缩，上限 120px
-    const el = e.target;
+  useEffect(() => {
+    setMicSupported(!!getSpeechRecognition());
+    return () => {
+      try {
+        recRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  function resize() {
+    const el = textareaRef.current;
+    if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    el.style.height = Math.min(el.scrollHeight, 88) + "px";
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    onChange(e.target.value);
+    resize();
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -45,42 +79,102 @@ export default function VoiceInputBar({
     if (!value.trim() || busy) return;
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     onSend();
+    setExpanded(false);
+  }
+
+  function openComposer() {
+    setExpanded(true);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function toggleMic() {
+    const Ctor = getSpeechRecognition();
+    if (!Ctor || busy) return;
+
+    if (listening && recRef.current) {
+      try {
+        recRef.current.stop();
+      } catch {
+        /* ignore */
+      }
+      setListening(false);
+      return;
+    }
+
+    const rec = new Ctor();
+    rec.lang = "zh-CN";
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onresult = (ev) => {
+      const piece = Array.from(ev.results)
+        .map((r) => r[0]?.transcript || "")
+        .join("");
+      if (piece) {
+        onChange(piece);
+        setExpanded(true);
+        requestAnimationFrame(resize);
+      }
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recRef.current = rec;
+    try {
+      rec.start();
+      setListening(true);
+      setExpanded(true);
+    } catch {
+      setListening(false);
+    }
   }
 
   return (
-    <div className="char-input-bar">
-      {/* 🎤 语音输入占位按钮（待接入 Web Speech API） */}
-      <button
-        type="button"
-        className="char-voice-btn"
-        title="语音输入（即将开放）"
-        aria-label="语音输入"
-        disabled
-      >
-        🎤
-      </button>
+    <div className={`char-input-dock ${expanded || value ? "is-open" : ""}`}>
+      <div className="char-input-bar">
+        <button
+          type="button"
+          className={`char-voice-btn ${listening ? "is-listening" : ""}`}
+          title={micSupported ? (listening ? "停止语音输入" : "语音输入") : "当前浏览器不支持语音输入"}
+          aria-label="语音输入"
+          aria-pressed={listening}
+          disabled={busy || !micSupported}
+          onClick={toggleMic}
+        >
+          <span aria-hidden>🎤</span>
+        </button>
 
-      {/* 文字输入框 */}
-      <textarea
-        ref={textareaRef}
-        className="char-input"
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={busy}
-        rows={1}
-      />
+        {!expanded && !value ? (
+          <button type="button" className="char-input-ghost" onClick={openComposer}>
+            {placeholder}
+          </button>
+        ) : (
+          <textarea
+            ref={textareaRef}
+            className="char-input"
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onBlur={() => {
+              if (!value.trim() && !listening) setExpanded(false);
+            }}
+            placeholder={placeholder}
+            disabled={busy}
+            rows={1}
+          />
+        )}
 
-      {/* 发送按钮 */}
-      <button
-        type="button"
-        className="char-send-btn"
-        disabled={busy || !value.trim()}
-        onClick={handleSend}
-      >
-        发送
-      </button>
+        <button
+          type="button"
+          className="char-send-btn"
+          disabled={busy || !value.trim()}
+          onClick={handleSend}
+          aria-label="发送"
+          title="发送"
+        >
+          <span className="char-send-arrow" aria-hidden>
+            ↑
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

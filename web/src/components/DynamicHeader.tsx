@@ -1,26 +1,22 @@
 /**
- * Layer 1 — 顶部悬浮操作栏
- *
- * 三列 CSS Grid 布局，保证中央角色徽章绝对居中：
- *   [← 返回]  ·  [名字 · 状态]  ·  [问候一句 | 记忆]
- *
- * 未来可在右侧 actions 区增加"🎵 音乐"、"⚙ 设置"等按钮。
+ * 顶部悬浮栏：返回 / 第几天 / 音乐·语音·问候·记忆
+ * 这些不是「跳路由」，而是点开轻量半页（抽屉/面板）——海外陪伴 App 常见做法。
  */
 
 type Props = {
   companionName: string;
   userNickname: string;
-  /** 认识天数，显示在状态徽章右侧 */
   daysTogether?: number;
   busy?: boolean;
   notebookOpen?: boolean;
-  /** TTS 自动朗读开关 */
   ttsEnabled?: boolean;
   onBack: () => void;
   onToggleNotebook: () => void;
   onMissYou: () => void;
   onToggleTTS?: () => void;
   onToggleMusic?: () => void;
+  /** 点「第 X 天」打开认识天数面板 */
+  onOpenDays?: () => void;
 };
 
 export default function DynamicHeader({
@@ -35,16 +31,21 @@ export default function DynamicHeader({
   onMissYou,
   onToggleTTS,
   onToggleMusic,
+  onOpenDays,
 }: Props) {
   return (
     <header className="char-topbar">
-      {/* 左列：返回按钮 */}
-      <button type="button" className="char-back-btn" onClick={onBack}>
+      <button type="button" className="char-back-btn" onClick={onBack} title="回主页">
         ← 返回
       </button>
 
-      {/* 中列：角色状态徽章（居中锁定） */}
-      <div className="char-tag">
+      <button
+        type="button"
+        className="char-tag"
+        onClick={onOpenDays}
+        title="认识天数"
+        aria-label="打开认识天数"
+      >
         <span className="char-status-dot" />
         <span className="char-tag-name">{companionName}</span>
         <span className="char-tag-divider">·</span>
@@ -55,29 +56,26 @@ export default function DynamicHeader({
               ? `第 ${daysTogether} 天`
               : `在陪${userNickname}`}
         </span>
-      </div>
+      </button>
 
-      {/* 右列：操作按钮组（右对齐） */}
       <div className="char-topbar-actions">
-        {/* 🎵 音乐面板 */}
         {onToggleMusic && (
           <button
             type="button"
             className="char-action-btn char-action-btn--icon"
             onClick={onToggleMusic}
-            title="环境音乐"
+            title="环境音乐（点开面板）"
             aria-label="环境音乐"
           >
             🎵
           </button>
         )}
-        {/* TTS 语音朗读开关 — 默认开启，醒目玻璃胶囊 */}
         {onToggleTTS && (
           <button
             type="button"
             className={`char-action-btn char-action-btn--icon char-tts-btn ${ttsEnabled ? "active" : ""}`}
             onClick={onToggleTTS}
-            title={ttsEnabled ? "语音朗读已开（点击关闭）" : "语音朗读已关（点击开启）"}
+            title={ttsEnabled ? "语音朗读已开" : "语音朗读已关"}
             aria-label="语音朗读"
             aria-pressed={!!ttsEnabled}
           >
@@ -96,6 +94,7 @@ export default function DynamicHeader({
           type="button"
           className={`char-action-btn ${notebookOpen ? "active" : ""}`}
           onClick={onToggleNotebook}
+          title="记忆本（侧页）"
         >
           {notebookOpen ? "收起" : "记忆"}
         </button>

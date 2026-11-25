@@ -61,6 +61,7 @@ export default function ChatRoom({
   onBack,
 }: Props) {
   const [input, setInput] = useState("");
+  const [daysOpen, setDaysOpen] = useState(false);
 
   function handleSend() {
     const text = input.trim();
@@ -94,6 +95,7 @@ export default function ChatRoom({
         onMissYou={onMissYou}
         onToggleTTS={onToggleTTS}
         onToggleMusic={onToggleMusic}
+        onOpenDays={() => setDaysOpen(true)}
       />
 
       <div className="char-overlay">
@@ -116,6 +118,29 @@ export default function ChatRoom({
       </div>
 
       <MemoryNotebook open={showNotebook} memories={memories} />
+
+      {daysOpen && (
+        <div
+          className="char-sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDaysOpen(false)}
+        >
+          <div className="char-sheet" onClick={(e) => e.stopPropagation()}>
+            <h2>认识第 {daysTogether || 1} 天</h2>
+            <p>
+              {nickname}，我还在这儿。不用一次把心事说完，想到哪儿就从哪儿开始。
+            </p>
+            <button
+              type="button"
+              className="char-sheet-close"
+              onClick={() => setDaysOpen(false)}
+            >
+              好
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 左侧隐藏调音板 / 剧本台 */}
       <DevLabPanel
