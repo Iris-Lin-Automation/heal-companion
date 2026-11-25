@@ -23,7 +23,7 @@ from companion.memory.schema import MemoryKind
 from companion.memory.store import MemoryStore, new_memory
 
 ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(ROOT / ".env")
+load_dotenv(ROOT / ".env", override=True)
 
 app = FastAPI(title="Heal Companion", version="0.2.0")
 app.add_middleware(

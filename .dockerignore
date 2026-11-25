@@ -1,0 +1,16 @@
+.venv
+venv
+env
+__pycache__
+*.pyc
+.git
+.cursor
+data
+web/node_modules
+web/dist
+tools
+qwen_sft_experiment
+*.md
+.env
+.env.*
+agent-transcripts

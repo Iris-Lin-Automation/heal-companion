@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: heal-companion
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.deepseek.com
+      - key: OPENAI_MODEL
+        value: deepseek-chat
+      - key: COMPANION_NAME
+        value: heal
+      - key: WEATHER_CITY
+        value: Shanghai
+      - key: VOLC_APPID
+        sync: false
+      - key: VOLC_TOKEN
+        sync: false
+      - key: VOLC_VOICE_TYPE
+        value: zh_male_taocheng_uranus_bigtts
+      - key: VOLC_SPEED_RATIO
+        value: "1.06"
+      - key: VOLC_PITCH_RATIO
+        value: "1.05"
+      - key: VOLC_CLUSTER
+        value: volcano_tts
