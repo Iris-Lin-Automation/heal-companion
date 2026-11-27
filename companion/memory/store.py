@@ -99,6 +99,51 @@ class MemoryStore:
         self.save_memories(items)
         return item
 
+    def get_memory(self, memory_id: str) -> MemoryItem | None:
+        mid = (memory_id or "").strip()
+        if not mid:
+            return None
+        for m in self.list_memories():
+            if m.id == mid:
+                return m
+        return None
+
+    def update_memory(
+        self,
+        memory_id: str,
+        *,
+        summary: str | None = None,
+        details: str | None = None,
+        importance: int | None = None,
+    ) -> MemoryItem | None:
+        items = self.list_memories()
+        for i, old in enumerate(items):
+            if old.id != memory_id:
+                continue
+            updates: dict = {"last_seen_at": datetime.now().isoformat(timespec="seconds")}
+            if summary is not None:
+                text = summary.strip()
+                if not text:
+                    return None
+                updates["summary"] = text[:200]
+            if details is not None:
+                updates["details"] = details.strip()[:500]
+            if importance is not None:
+                updates["importance"] = max(1, min(5, int(importance)))
+            merged = old.model_copy(update=updates)
+            items[i] = merged
+            self.save_memories(items)
+            return merged
+        return None
+
+    def delete_memory(self, memory_id: str) -> bool:
+        items = self.list_memories()
+        next_items = [m for m in items if m.id != memory_id]
+        if len(next_items) == len(items):
+            return False
+        self.save_memories(next_items)
+        return True
+
     def append_journal(self, line: str) -> None:
         line = (line or "").strip()
         if not line:

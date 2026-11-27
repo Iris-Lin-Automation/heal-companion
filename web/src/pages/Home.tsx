@@ -94,9 +94,9 @@ export default function Home({
 
       {panel === "notebook" && (
         <div className="dock-panel dock-panel--float" key="notebook">
-          <p className="dock-panel-title">heal 记得的事</p>
+          <p className="dock-panel-title">你们一起记得的事</p>
           {memories.length === 0 ? (
-            <p className="dock-panel-empty">还空着。等你愿意说，会慢慢留下来。</p>
+            <p className="dock-panel-empty">还空着。共同经历会慢慢留下来，也可在记忆本里改删。</p>
           ) : (
             <ul className="dock-panel-memory-list">
               {memories.slice(0, 4).map((m) => (
@@ -109,7 +109,7 @@ export default function Home({
             className="ghost-pill dock-panel-secondary"
             onClick={() => { onNotebook(); setPanel(null); }}
           >
-            打开记忆
+            打开并编辑记忆
           </button>
         </div>
       )}

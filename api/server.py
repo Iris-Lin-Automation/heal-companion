@@ -96,6 +96,13 @@ class ProfileUpdate(BaseModel):
     comfort_notes: str = ""
 
 
+class MemoryUpdate(BaseModel):
+    user_id: str = "default"
+    summary: Optional[str] = None
+    details: Optional[str] = None
+    importance: Optional[int] = None
+
+
 class OpenAIMessage(BaseModel):
     role: str
     content: Any = ""
@@ -273,6 +280,28 @@ def memories(user_id: str = "default"):
         "memories": [m.model_dump() for m in mem_items],
         "markdown": store.format_recall_block(mem_items),
     }
+
+
+@app.patch("/api/memories/{memory_id}")
+def patch_memory(memory_id: str, body: MemoryUpdate):
+    store = MemoryStore(body.user_id)
+    updated = store.update_memory(
+        memory_id,
+        summary=body.summary,
+        details=body.details,
+        importance=body.importance,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="memory not found")
+    return {"ok": True, "memory": updated.model_dump()}
+
+
+@app.delete("/api/memories/{memory_id}")
+def remove_memory(memory_id: str, user_id: str = "default"):
+    store = MemoryStore(user_id)
+    if not store.delete_memory(memory_id):
+        raise HTTPException(status_code=404, detail="memory not found")
+    return {"ok": True, "id": memory_id}
 
 
 @app.get("/api/history")

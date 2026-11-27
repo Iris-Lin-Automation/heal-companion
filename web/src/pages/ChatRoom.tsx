@@ -15,6 +15,8 @@ type Props = {
   daysTogether: number;
   messages: ChatMessage[];
   memories: MemoryItem[];
+  userId: string;
+  onMemoriesChanged?: () => void;
   busy: boolean;
   showNotebook: boolean;
   quickReplies?: string[];
@@ -37,6 +39,8 @@ export default function ChatRoom({
   daysTogether,
   messages,
   memories,
+  userId,
+  onMemoriesChanged,
   busy,
   showNotebook,
   quickReplies,
@@ -109,7 +113,12 @@ export default function ChatRoom({
         />
       </div>
 
-      <MemoryNotebook open={showNotebook} memories={memories} />
+      <MemoryNotebook
+        open={showNotebook}
+        memories={memories}
+        userId={userId}
+        onChanged={onMemoriesChanged}
+      />
 
       {daysOpen && (
         <div

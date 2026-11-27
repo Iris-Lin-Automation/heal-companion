@@ -898,6 +898,8 @@ export default function App() {
           daysTogether={daysTogether(session)}
           messages={messages}
           memories={memories}
+          userId={session.userId}
+          onMemoriesChanged={() => void refreshMemories()}
           busy={busy || missBusy}
           showNotebook={showNotebook}
           quickReplies={quickReplies}

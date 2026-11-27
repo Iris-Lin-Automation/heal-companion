@@ -21,7 +21,7 @@ export default function Welcome({
   return (
     <section className="screen welcome-screen">
       <div className="welcome-imm">
-        <p className="welcome-sub">下班后，有个人在</p>
+        <p className="welcome-sub">你的专属陪伴，记得你们一起走过的事</p>
         <h1 className="welcome-title">heal</h1>
         <button type="button" className="welcome-enter-btn" onClick={onEnter}>
           进入
