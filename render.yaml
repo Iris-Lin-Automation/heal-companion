@@ -30,14 +30,14 @@ services:
       - key: VOLC_CLUSTER
         value: volcano_tts
       - key: SUPABASE_URL
-        sync: false
+        value: https://ibzfvnzjnapjelxmfidh.supabase.co
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: VITE_SUPABASE_URL
-        sync: false
+        value: https://ibzfvnzjnapjelxmfidh.supabase.co
       - key: VITE_SUPABASE_ANON_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliemZ2bnpqbmFwamVseG1maWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3NDc4MDUsImV4cCI6MjExMTMyMzgwNX0.GISY5ITf3UujQWTlgqW7QUJuYvcdD47919iYRbJuwU0
       - key: VITE_SITE_URL
         value: https://heal-companion.onrender.com
