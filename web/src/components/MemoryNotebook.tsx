@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "../lib/api";
 
 /**
  * 共享记忆条目类型（由此文件导出）
@@ -26,14 +27,13 @@ const KIND_LABEL: Record<string, string> = {
 type Props = {
   open: boolean;
   memories: MemoryItem[];
-  userId: string;
   onChanged?: () => void;
 };
 
 /**
  * 右侧记忆抽屉：可查看、修改、删除——共同经历由用户自己经营。
  */
-export default function MemoryNotebook({ open, memories, userId, onChanged }: Props) {
+export default function MemoryNotebook({ open, memories, onChanged }: Props) {
   const sorted = memories.slice().sort((a, b) => b.importance - a.importance);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -54,10 +54,10 @@ export default function MemoryNotebook({ open, memories, userId, onChanged }: Pr
     if (!summary || busyId) return;
     setBusyId(id);
     try {
-      const res = await fetch(`/api/memories/${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, summary }),
+        body: JSON.stringify({ summary }),
       });
       if (!res.ok) throw new Error("patch failed");
       cancelEdit();
@@ -74,10 +74,9 @@ export default function MemoryNotebook({ open, memories, userId, onChanged }: Pr
     if (!window.confirm("删掉这条记忆？之后对话里就不会再提起。")) return;
     setBusyId(id);
     try {
-      const res = await fetch(
-        `/api/memories/${encodeURIComponent(id)}?user_id=${encodeURIComponent(userId)}`,
-        { method: "DELETE" }
-      );
+      const res = await apiFetch(`/api/memories/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("delete failed");
       if (editingId === id) cancelEdit();
       onChanged?.();

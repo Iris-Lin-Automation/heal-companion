@@ -31,3 +31,8 @@ dist/
 *.code-workspace
 .DS_Store
 Thumbs.db
+
+# ===== 本地工具 / 测试缓存 =====
+.pytest_cache/
+tools/*.exe
+tools/cloudflared.exe

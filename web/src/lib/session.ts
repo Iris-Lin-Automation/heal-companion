@@ -1,4 +1,6 @@
-const SESSION_KEY = "heal-session";
+function sessionKey(userId: string) {
+  return `heal-session:${userId}`;
+}
 
 export type Session = {
   userId: string;
@@ -16,35 +18,27 @@ export function daysTogether(session: Session): number {
   return Math.max(1, Math.floor(diff / 86_400_000) + 1);
 }
 
-function freshId() {
-  return `u_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-export function loadSession(): Session {
+export function loadSessionFor(userId: string): Session {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) return JSON.parse(raw) as Session;
+    const raw = localStorage.getItem(sessionKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw) as Session;
+      return { ...parsed, userId };
+    }
   } catch {
     /* ignore */
   }
-  return {
-    userId: freshId(),
-    nickname: "",
-    comfort: "",
-    onboarded: false,
-  };
+  return { userId, nickname: "", comfort: "", onboarded: false };
 }
 
 export function saveSession(session: Session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  if (!session.userId) return;
+  localStorage.setItem(sessionKey(session.userId), JSON.stringify(session));
 }
 
-/** 清除本地 session，下次启动会重新走 Welcome → Greet 引导流程 */
-export function resetSession(): Session {
-  localStorage.removeItem(SESSION_KEY);
-  // 同时清除旧 key（兼容旧版本）
-  localStorage.removeItem("ruanruan-session");
-  const fresh: Session = { userId: freshId(), nickname: "", comfort: "", onboarded: false };
+/** 只清这个账号在本机的引导进度，不删除云端记忆。 */
+export function resetSession(userId: string): Session {
+  const fresh: Session = { userId, nickname: "", comfort: "", onboarded: false };
   saveSession(fresh);
   return fresh;
 }

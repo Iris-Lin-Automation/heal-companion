@@ -2,6 +2,7 @@ type Props = {
   onEnter: () => void;
   /** 重置 session → 重新走 Greet 引导流程 */
   onReset: () => void;
+  onLogout?: () => void;
   isReturning: boolean;
   hasApiKey?: boolean;
   onOpenApiKey?: () => void;
@@ -14,6 +15,7 @@ type Props = {
 export default function Welcome({
   onEnter,
   onReset,
+  onLogout,
   isReturning,
   hasApiKey,
   onOpenApiKey,
@@ -34,6 +36,11 @@ export default function Welcome({
         {isReturning && (
           <button type="button" className="welcome-reset-btn" onClick={onReset}>
             重新认识
+          </button>
+        )}
+        {onLogout && (
+          <button type="button" className="welcome-key-btn" onClick={onLogout}>
+            退出登录
           </button>
         )}
       </div>

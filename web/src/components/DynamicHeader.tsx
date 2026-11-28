@@ -19,6 +19,7 @@ type Props = {
   onToggleMusic?: () => void;
   onOpenDays?: () => void;
   onOpenApiKey?: () => void;
+  onLogout?: () => void;
 };
 
 export default function DynamicHeader({
@@ -35,6 +36,7 @@ export default function DynamicHeader({
   onToggleMusic,
   onOpenDays,
   onOpenApiKey,
+  onLogout,
 }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
@@ -166,6 +168,18 @@ export default function DynamicHeader({
                 title="DeepSeek API Key"
               >
                 Key
+              </button>
+            )}
+            {onLogout && (
+              <button
+                type="button"
+                className="char-action-btn"
+                onClick={() => {
+                  onLogout();
+                  setOpen(false);
+                }}
+              >
+                退出
               </button>
             )}
             <button

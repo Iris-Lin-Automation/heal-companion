@@ -15,6 +15,9 @@ _mgr = PersonaManager()
 
 
 def _today_journal(store: MemoryStore) -> str:
+    reader = getattr(store, "today_journal", None)
+    if callable(reader):
+        return str(reader() or "")
     path = store.dir / "journal" / f"{date.today().isoformat()}.md"
     if not path.exists():
         return ""

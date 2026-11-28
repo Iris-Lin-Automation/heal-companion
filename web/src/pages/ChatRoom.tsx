@@ -15,7 +15,6 @@ type Props = {
   daysTogether: number;
   messages: ChatMessage[];
   memories: MemoryItem[];
-  userId: string;
   onMemoriesChanged?: () => void;
   busy: boolean;
   showNotebook: boolean;
@@ -29,6 +28,7 @@ type Props = {
   onToggleTTS?: () => void;
   onToggleMusic?: () => void;
   onOpenApiKey?: () => void;
+  onLogout?: () => void;
   onSend: (text: string) => void;
   onMissYou: () => void;
   onBack: () => void;
@@ -39,7 +39,6 @@ export default function ChatRoom({
   daysTogether,
   messages,
   memories,
-  userId,
   onMemoriesChanged,
   busy,
   showNotebook,
@@ -53,6 +52,7 @@ export default function ChatRoom({
   onToggleTTS,
   onToggleMusic,
   onOpenApiKey,
+  onLogout,
   onSend,
   onMissYou,
   onBack,
@@ -90,6 +90,7 @@ export default function ChatRoom({
         onToggleMusic={onToggleMusic}
         onOpenDays={() => setDaysOpen(true)}
         onOpenApiKey={onOpenApiKey}
+        onLogout={onLogout}
       />
 
       <div className="char-overlay">
@@ -116,7 +117,6 @@ export default function ChatRoom({
       <MemoryNotebook
         open={showNotebook}
         memories={memories}
-        userId={userId}
         onChanged={onMemoriesChanged}
       />
 

@@ -10,17 +10,19 @@ from pathlib import Path
 from typing import Any, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
+from api.auth import require_user_id, require_v1_user
 from companion.chat.loop import chat_once, chat_stream
 from companion.heartbeat.checkin import craft_checkin
+from companion.memory.factory import get_store
 from companion.memory.schema import MemoryKind
-from companion.memory.store import MemoryStore, new_memory
+from companion.memory.store import new_memory
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env", override=True)
@@ -57,13 +59,9 @@ def _settings(
     return OpenAI(api_key=api_key, base_url=base_url), model, name
 
 
-def _user_id(x_user_id: Optional[str]) -> str:
-    return (x_user_id or "default").strip() or "default"
-
-
 class ChatRequest(BaseModel):
     message: str
-    user_id: str = "default"
+    user_id: str = ""  # 已忽略：身份只来自已验证的 JWT
     stream: bool = True
     # 前端悄悄上传：城市 / 本地时间 / 天气（Open-Meteo 等免费源）
     env_context: Optional[dict[str, Any]] = None
@@ -73,7 +71,7 @@ class ChatRequest(BaseModel):
 
 
 class PingRequest(BaseModel):
-    user_id: str = "default"
+    user_id: str = ""  # 已忽略：身份只来自已验证的 JWT
     env_context: Optional[dict[str, Any]] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
@@ -90,14 +88,14 @@ class TTSRequest(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    user_id: str = "default"
+    user_id: str = ""  # 已忽略：身份只来自已验证的 JWT
     display_name: str = ""
     preferred_address: str = "你"
     comfort_notes: str = ""
 
 
 class MemoryUpdate(BaseModel):
-    user_id: str = "default"
+    user_id: str = ""  # 已忽略：身份只来自已验证的 JWT
     summary: Optional[str] = None
     details: Optional[str] = None
     importance: Optional[int] = None
@@ -121,84 +119,26 @@ def health():
     return {"ok": True, "companion": os.getenv("COMPANION_NAME", "软软")}
 
 
-@app.get("/api/users")
+@app.post("/api/session", include_in_schema=False)
+def open_session():
+    """匿名 cookie 会话已关闭。身份只来自 Supabase 登录。"""
+    raise HTTPException(status_code=410, detail="请使用账号登录")
+
+
+@app.get("/api/users", include_in_schema=False)
 def list_users():
-    """列出本地已有用户（用于会话恢复，防止刷新丢聊天）。"""
-    from companion.memory.store import ROOT
-
-    users = []
-    if not ROOT.exists():
-        return {"users": []}
-    for d in ROOT.iterdir():
-        if not d.is_dir():
-            continue
-        profile_path = d / "profile.json"
-        chat_path = d / "chat.jsonl"
-        nickname = ""
-        comfort = ""
-        created = ""
-        if profile_path.exists():
-            try:
-                p = json.loads(profile_path.read_text(encoding="utf-8"))
-                nickname = p.get("display_name") or p.get("preferred_address") or ""
-                comfort = p.get("comfort_notes") or ""
-                created = p.get("created_at") or ""
-            except Exception:  # noqa: BLE001
-                pass
-        chat_count = 0
-        last_ts = ""
-        if chat_path.exists():
-            lines = [ln for ln in chat_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-            chat_count = len(lines)
-            if lines:
-                try:
-                    last_ts = json.loads(lines[-1]).get("ts") or ""
-                except Exception:  # noqa: BLE001
-                    pass
-        users.append(
-            {
-                "user_id": d.name,
-                "nickname": nickname,
-                "comfort": comfort,
-                "created_at": created,
-                "chat_count": chat_count,
-                "last_ts": last_ts,
-            }
-        )
-    # 最近聊过的排前面
-    users.sort(key=lambda u: u.get("last_ts") or u.get("created_at") or "", reverse=True)
-    return {"users": users}
+    """已关闭：公开枚举 data/users 会泄露所有人的 id 与昵称。"""
+    raise HTTPException(status_code=404, detail="not found")
 
 
-@app.get("/api/recover")
-def recover_user(nickname: str = "", user_id: str = ""):
-    """按昵称或 user_id 找回已有账号；都不传则返回最近最活跃的一个。"""
-    listed = list_users()["users"]
-    if not listed:
-        return {"found": False}
-
-    if user_id:
-        hit = next((u for u in listed if u["user_id"] == user_id), None)
-        if hit:
-            return {"found": True, "user": hit}
-
-    nick = (nickname or "").strip().lower()
-    if nick:
-        # 精确匹配优先，再模糊
-        exact = [u for u in listed if (u.get("nickname") or "").lower() == nick]
-        if exact:
-            return {"found": True, "user": exact[0]}
-        soft = [u for u in listed if nick in (u.get("nickname") or "").lower()]
-        if soft:
-            return {"found": True, "user": soft[0]}
-
-    # 默认：聊天最多、最近活跃
-    listed.sort(key=lambda u: (u.get("chat_count") or 0, u.get("last_ts") or ""), reverse=True)
-    return {"found": True, "user": listed[0]}
+@app.get("/api/recover", include_in_schema=False)
+def recover_user():
+    """已关闭：无凭证按昵称或「最活跃用户」换号会把访客接到别人的记忆。"""
+    raise HTTPException(status_code=404, detail="not found")
 
 
 @app.post("/api/tts")
-async def tts(body: TTSRequest):
+async def tts(body: TTSRequest, _user_id: str = Depends(require_user_id)):
     """
     TTS 合成：优先火山引擎多情感；失败时回退 edge-tts，保证可播放。
     """
@@ -271,8 +211,8 @@ async def tts(body: TTSRequest):
 
 
 @app.get("/api/memories")
-def memories(user_id: str = "default"):
-    store = MemoryStore(user_id)
+def memories(user_id: str = Depends(require_user_id)):
+    store = get_store(user_id)
     mem_items = store.list_memories()
     return {
         "user_id": user_id,
@@ -283,8 +223,8 @@ def memories(user_id: str = "default"):
 
 
 @app.patch("/api/memories/{memory_id}")
-def patch_memory(memory_id: str, body: MemoryUpdate):
-    store = MemoryStore(body.user_id)
+def patch_memory(memory_id: str, body: MemoryUpdate, user_id: str = Depends(require_user_id)):
+    store = get_store(user_id)
     updated = store.update_memory(
         memory_id,
         summary=body.summary,
@@ -297,28 +237,28 @@ def patch_memory(memory_id: str, body: MemoryUpdate):
 
 
 @app.delete("/api/memories/{memory_id}")
-def remove_memory(memory_id: str, user_id: str = "default"):
-    store = MemoryStore(user_id)
+def remove_memory(memory_id: str, user_id: str = Depends(require_user_id)):
+    store = get_store(user_id)
     if not store.delete_memory(memory_id):
         raise HTTPException(status_code=404, detail="memory not found")
     return {"ok": True, "id": memory_id}
 
 
 @app.get("/api/history")
-def history(user_id: str = "default", limit: int = 40):
-    store = MemoryStore(user_id)
+def history(user_id: str = Depends(require_user_id), limit: int = 40):
+    store = get_store(user_id)
     return {"messages": store.recent_chat(limit)}
 
 
 @app.get("/api/profile")
-def get_profile(user_id: str = "default"):
-    store = MemoryStore(user_id)
+def get_profile(user_id: str = Depends(require_user_id)):
+    store = get_store(user_id)
     return store.load_profile().model_dump()
 
 
 @app.post("/api/profile")
-def update_profile(body: ProfileUpdate):
-    store = MemoryStore(body.user_id)
+def update_profile(body: ProfileUpdate, user_id: str = Depends(require_user_id)):
+    store = get_store(user_id)
     profile = store.load_profile()
     profile.display_name = (body.display_name or "").strip() or profile.display_name
     profile.preferred_address = (body.preferred_address or "").strip() or profile.preferred_address
@@ -345,9 +285,9 @@ def update_profile(body: ProfileUpdate):
 
 
 @app.post("/api/ping")
-def ping(body: PingRequest):
+def ping(body: PingRequest, user_id: str = Depends(require_user_id)):
     client, model, name = _settings(body.api_key, body.base_url)
-    store = MemoryStore(body.user_id)
+    store = get_store(user_id)
     msg = craft_checkin(
         client, model, store, name, env_context=body.env_context
     )
@@ -358,9 +298,9 @@ def ping(body: PingRequest):
 
 
 @app.post("/api/chat")
-def chat(body: ChatRequest):
+def chat(body: ChatRequest, user_id: str = Depends(require_user_id)):
     client, model, name = _settings(body.api_key, body.base_url)
-    store = MemoryStore(body.user_id)
+    store = get_store(user_id)
     text = body.message.strip()
     if not text:
         raise HTTPException(400, "message empty")
@@ -498,11 +438,11 @@ def _last_user_and_history(messages: list[OpenAIMessage]) -> tuple[str, list[dic
 @app.post("/v1/chat/completions")
 def openai_chat(
     body: OpenAIChatRequest,
-    x_user_id: Optional[str] = Header(default=None),
+    authorization: Optional[str] = Header(default=None),
 ):
+    user_id = require_v1_user(authorization)
     client, model, name = _settings()
-    user_id = body.user or _user_id(x_user_id)
-    store = MemoryStore(user_id)
+    store = get_store(user_id)
     user_text, history = _last_user_and_history(body.messages)
     if not user_text:
         raise HTTPException(400, "no user message")

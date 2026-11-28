@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadSession, saveSession, resetSession, daysTogether } from "./lib/session";
+import { loadSessionFor, saveSession, resetSession, daysTogether } from "./lib/session";
+import { apiFetch } from "./lib/api";
+import { supabase } from "./lib/supabaseClient";
+import AuthScreen from "./components/AuthScreen";
 import type { Session } from "./lib/session";
 import { collectEnvContext } from "./lib/envContext";
 import type { EnvContext } from "./lib/envContext";
@@ -22,11 +25,13 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+const emptySession: Session = { userId: "", nickname: "", comfort: "", onboarded: false };
+
 export default function App() {
-  const [session, setSession] = useState<Session>(() => loadSession());
-  const [screen, setScreen] = useState<Screen>(() =>
-    loadSession().onboarded ? "home" : "welcome"
-  );
+  const [accountId, setAccountId] = useState("");
+  const [authReady, setAuthReady] = useState(false);
+  const [session, setSession] = useState<Session>(emptySession);
+  const [screen, setScreen] = useState<Screen>("welcome");
   const [busy, setBusy] = useState(false);
   const [missBusy, setMissBusy] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
@@ -78,22 +83,18 @@ export default function App() {
 
   const refreshMemories = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/memories?user_id=${encodeURIComponent(session.userId)}`
-      );
+      const res = await apiFetch("/api/memories");
       if (!res.ok) return;
       const data = await res.json();
       setMemories(data.memories || []);
     } catch {
       /* silent */
     }
-  }, [session.userId]);
+  }, []);
 
   const loadHistory = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/history?user_id=${encodeURIComponent(session.userId)}&limit=40`
-      );
+      const res = await apiFetch("/api/history?limit=40");
       if (!res.ok) return;
       const data = await res.json();
       const hist = (data.messages || []) as { role: "user" | "assistant"; content: string }[];
@@ -109,7 +110,7 @@ export default function App() {
     } catch {
       /* first visit */
     }
-  }, [session.userId]);
+  }, []);
 
   // 启动时静默采集环境（定位可能弹权限；拒绝则用 IP）
   useEffect(() => {
@@ -120,56 +121,57 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!supabase) {
+      setAuthReady(true);
+      return;
+    }
+    let alive = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!alive) return;
+      setAccountId(data.session?.user.id || "");
+      setAuthReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+      setAccountId(next?.user.id || "");
+      setAuthReady(true);
+    });
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     saveSession(session);
   }, [session]);
 
-  // 启动时：自动恢复账号 + 拉回聊天记录（防止刷新丢对话）
   useEffect(() => {
+    if (!accountId) return;
+    const next = loadSessionFor(accountId);
+    setSession(next);
+    setScreen(next.onboarded ? "home" : "welcome");
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "我在。今天先不用整理好再说，想到哪儿就从哪儿开始。",
+      },
+    ]);
+    setMemories([]);
+  }, [accountId]);
+
+  // 只拉当前登录用户的历史。
+  useEffect(() => {
+    if (!accountId) return;
     let cancelled = false;
 
     async function bootstrap() {
       try {
-        // 1) 当前 userId 是否已有历史？
-        const histRes = await fetch(
-          `/api/history?user_id=${encodeURIComponent(session.userId)}&limit=40`
-        );
+        const histRes = await apiFetch("/api/history?limit=40");
         let hist: { role: "user" | "assistant"; content: string }[] = [];
         if (histRes.ok) {
           const data = await histRes.json();
           hist = data.messages || [];
-        }
-
-        // 2) 没有历史 → 尝试从磁盘恢复最近活跃账号（或按昵称匹配）
-        if (!hist.length) {
-          const q = session.nickname
-            ? `?nickname=${encodeURIComponent(session.nickname)}`
-            : "";
-          const recRes = await fetch(`/api/recover${q}`);
-          if (recRes.ok) {
-            const rec = await recRes.json();
-            if (rec.found && rec.user?.user_id && rec.user.user_id !== session.userId) {
-              if (cancelled) return;
-              const restored = {
-                ...session,
-                userId: rec.user.user_id as string,
-                nickname: (rec.user.nickname as string) || session.nickname,
-                comfort: (rec.user.comfort as string) || session.comfort,
-                onboarded: true,
-                metAt: session.metAt ?? new Date().toISOString(),
-              };
-              setSession(restored);
-              saveSession(restored);
-              setScreen((s) => (s === "welcome" || s === "greet" ? "home" : s));
-              // 用恢复后的 id 再拉历史
-              const h2 = await fetch(
-                `/api/history?user_id=${encodeURIComponent(restored.userId)}&limit=40`
-              );
-              if (h2.ok) {
-                const d2 = await h2.json();
-                hist = d2.messages || [];
-              }
-            }
-          }
         }
 
         if (cancelled) return;
@@ -194,9 +196,9 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-    // 仅启动时跑一次；后续靠 enterChat / sendMessage
+    // 换账号后重新拉这个人的历史
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [accountId]);
 
   useEffect(() => {
     ttsEnabledRef.current = ttsEnabled;
@@ -224,11 +226,10 @@ export default function App() {
 
   async function persistProfile(nickname: string, comfort: string) {
     try {
-      await fetch("/api/profile", {
+      await apiFetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: session.userId,
           display_name: nickname,
           preferred_address: nickname,
           comfort_notes: comfort,
@@ -432,12 +433,11 @@ export default function App() {
         envRef.current = fresh;
       });
 
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: trimmed,
-          user_id: session.userId,
           stream: true,
           env_context: env,
           api_key: getUserApiKey() || undefined,
@@ -445,6 +445,10 @@ export default function App() {
         }),
       });
       if (res.status === 401) {
+        const errText = await res.text();
+        if (errText.includes("login required")) {
+          throw new Error("need_session");
+        }
         setShowApiKey(true);
         throw new Error("need_key");
       }
@@ -520,7 +524,7 @@ export default function App() {
       }
       void refreshMemories();
     } catch (err) {
-      if (err instanceof Error && err.message === "need_key") {
+      if (err instanceof Error && (err.message === "need_key" || err.message === "need_session")) {
         setShowRetry(false);
         setMessages((prev) => {
           const last = prev[prev.length - 1];
@@ -577,7 +581,7 @@ export default function App() {
     const spoken = cleanForSpeech(text);
     if (!spoken) return null;
     try {
-      const res = await fetch("/api/tts", {
+      const res = await apiFetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -740,19 +744,19 @@ export default function App() {
     try {
       const env = await collectEnvContext();
       envRef.current = env;
-      const res = await fetch("/api/ping", {
+      const res = await apiFetch("/api/ping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: session.userId,
           env_context: env,
           api_key: getUserApiKey() || undefined,
           base_url: getUserBaseUrl() || undefined,
         }),
       });
       if (res.status === 401) {
-        setShowApiKey(true);
-        throw new Error("need_key");
+        const errText = await res.text();
+        if (!errText.includes("login required")) setShowApiKey(true);
+        throw new Error(errText.includes("login required") ? "need_session" : "need_key");
       }
       if (!res.ok) throw new Error("fail");
       const data = await res.json();
@@ -822,7 +826,12 @@ export default function App() {
     <div className={`world ${entryMode ? "world--entry" : "world--chat"}`}>
       {/* 全局立绘背景 — ChatRoom 会用自己的 absolute 层覆盖 */}
       <div className="world-bg" aria-hidden>
-        <img src="/images/heal-character-main.jpg" alt="" draggable={false} />
+        <img
+          className="animate-breathe"
+          src="/images/heal-character-main.jpg"
+          alt=""
+          draggable={false}
+        />
 
         {/* 角色身后梦幻紫光晕（仅入口页氛围灯，聊天页有自己的立绘） */}
         <div className="world-char-glow" />
@@ -831,7 +840,10 @@ export default function App() {
       <div className="glow glow-a" aria-hidden />
       <div className="glow glow-b" aria-hidden />
 
-      {screen === "welcome" && (
+      {!authReady && <p className="welcome-sub auth-wait">正在确认是不是你…</p>}
+      {authReady && !accountId && <AuthScreen />}
+
+      {authReady && accountId && screen === "welcome" && (
         <Welcome
           onEnter={() => {
             if (!hasUserApiKey()) {
@@ -841,7 +853,7 @@ export default function App() {
             setScreen(session.onboarded ? "home" : "greet");
           }}
           onReset={() => {
-            const fresh = resetSession();
+            const fresh = resetSession(session.userId);
             setSession(fresh);
             setMessages([{
               id: "welcome",
@@ -850,24 +862,27 @@ export default function App() {
             }]);
             setScreen("greet");
           }}
+          onLogout={() => {
+            void supabase?.auth.signOut();
+          }}
           isReturning={session.onboarded}
           hasApiKey={apiKeyReady}
           onOpenApiKey={() => setShowApiKey(true)}
         />
       )}
 
-      {screen === "greet" && (
+      {authReady && accountId && screen === "greet" && (
         <Greet initialName={session.nickname} onDone={finishGreet} />
       )}
 
-      {screen === "firstmeet" && (
+      {authReady && accountId && screen === "firstmeet" && (
         <FirstMeet
           nickname={session.nickname || "你"}
           onContinue={() => setScreen("home")}
         />
       )}
 
-      {screen === "home" && (
+      {authReady && accountId && screen === "home" && (
         <Home
           nickname={session.nickname || "你"}
           memories={memories}
@@ -892,13 +907,12 @@ export default function App() {
         />
       )}
 
-      {screen === "chat" && (
+      {authReady && accountId && screen === "chat" && (
         <ChatRoom
           nickname={session.nickname || "你"}
           daysTogether={daysTogether(session)}
           messages={messages}
           memories={memories}
-          userId={session.userId}
           onMemoriesChanged={() => void refreshMemories()}
           busy={busy || missBusy}
           showNotebook={showNotebook}
@@ -915,6 +929,9 @@ export default function App() {
             void refreshMemories();
           }}
           onOpenApiKey={() => setShowApiKey(true)}
+          onLogout={() => {
+            void supabase?.auth.signOut();
+          }}
           onSend={(t) => void sendMessage(t)}
           onMissYou={() => void onMissYou(false)}
           onBack={() => {

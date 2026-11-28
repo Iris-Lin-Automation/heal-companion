@@ -186,6 +186,9 @@ def pick_for_user(store: "MemoryStore", force: bool = False) -> BridgeItem | Non
 # ── 持久化：记录最后推送日期 ─────────────────────────────────────────────
 
 def _load_last_date(store: "MemoryStore") -> date | None:
+    loader = getattr(store, "load_bridge_date", None)
+    if callable(loader):
+        return loader()
     path = store.dir / "bridge_last.txt"
     if not path.exists():
         return None
@@ -196,5 +199,9 @@ def _load_last_date(store: "MemoryStore") -> date | None:
 
 
 def _save_last_date(store: "MemoryStore") -> None:
+    saver = getattr(store, "save_bridge_date", None)
+    if callable(saver):
+        saver()
+        return
     path = store.dir / "bridge_last.txt"
     path.write_text(date.today().isoformat(), encoding="utf-8")
