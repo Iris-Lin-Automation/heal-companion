@@ -19,6 +19,12 @@
   <img src="web/public/images/heal-character-main.jpg" alt="heal 角色立绘" width="360" />
 </p>
 
+<p align="center">
+  <img src="docs/demo-frames/expressions.gif" alt="heal 表情切换演示" width="320" />
+  <br/>
+  <em>立绘表情切换：平静 / 微笑 / 害羞 / 生气 / 委屈 / 受伤 / 说话</em>
+</p>
+
 **体验路径（约 2 分钟）：**
 
 1. 打开 [演示站](https://heal-companion.onrender.com) → 注册 / 登录  
@@ -26,7 +32,7 @@
 3. 进入对话，发一句；可开 **雨声 / 树荫白噪音**（右上菜单 → 音乐）  
 4. 打开 **记忆本**，查看或改写一起记得的事  
 
-> 完整操作录屏：欢迎用手机/电脑自行录 30–60 秒发到仓库 Discussions，或把 mp4 放到 `docs/demo.mp4` 后在本段嵌入。当前以立绘 + 链接演示为主（比长视频更易点开）。
+> 有时间的话，再补一段 30–60 秒真实操作录屏会更好（登录 → 开雨声 → 对话 → 记忆本）。不是必须：现在 GIF + 演示链接已经够简历展示。
 
 ---
 
