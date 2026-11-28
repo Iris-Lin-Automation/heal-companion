@@ -3,9 +3,17 @@ import { authRedirectTo, supabase, supabaseConfigured } from "../lib/supabaseCli
 
 type Mode = "login" | "signup";
 
+const LAST_EMAIL_KEY = "heal-last-email";
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem(LAST_EMAIL_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,12 +33,22 @@ export default function AuthScreen() {
           options: { emailRedirectTo: redirectTo },
         });
         if (signError) throw signError;
+        try {
+          localStorage.setItem(LAST_EMAIL_KEY, email.trim());
+        } catch {
+          /* ignore */
+        }
         if (!data.session) {
           setInfo(`确认信已发出。请在同一台设备打开邮件里的链接（会回到 ${redirectTo}），再回来登录。`);
         }
       } else {
         const { error: signError } = await supabase.auth.signInWithPassword({ email, password });
         if (signError) throw signError;
+        try {
+          localStorage.setItem(LAST_EMAIL_KEY, email.trim());
+        } catch {
+          /* ignore */
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录没有成功");
@@ -47,7 +65,7 @@ export default function AuthScreen() {
           <p>这段陪伴只属于登录的这个人。换一个账号，就是另一段记忆。</p>
         ) : (
           <p>
-            登录还没接上。在项目根目录的 .env 填入 VITE_SUPABASE_URL、VITE_SUPABASE_ANON_KEY、SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY、SUPABASE_JWT_SECRET，并在 Supabase 里执行 supabase/migrations/001_identity_and_memory.sql。
+            登录服务还在接通中，请稍后再试。本机开发请确认已配置 Supabase 相关环境变量。
           </p>
         )}
         {supabaseConfigured() && (
