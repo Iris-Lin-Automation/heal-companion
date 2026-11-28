@@ -13,4 +13,6 @@ qwen_sft_experiment
 *.md
 .env
 .env.*
+!.env.production
+!web/.env.production
 agent-transcripts

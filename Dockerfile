@@ -4,9 +4,10 @@ WORKDIR /web
 COPY web/package.json web/package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY web/ .
-ARG VITE_SUPABASE_URL=""
-ARG VITE_SUPABASE_ANON_KEY=""
-ARG VITE_SITE_URL="https://heal-companion.onrender.com"
+# 匿名 key 可公开；默认写进构建，避免 Render 未配 build-arg / .dockerignore 挡掉 .env.production 时线上登不上。
+ARG VITE_SUPABASE_URL=https://ibzfvnzjnapjelxmfidh.supabase.co
+ARG VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliemZ2bnpqbmFwamVseG1maWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3NDc4MDUsImV4cCI6MjExMTMyMzgwNX0.GISY5ITf3UujQWTlgqW7QUJuYvcdD47919iYRbJuwU0
+ARG VITE_SITE_URL=https://heal-companion.onrender.com
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_SITE_URL=$VITE_SITE_URL
